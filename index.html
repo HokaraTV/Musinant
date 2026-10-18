@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0}</style>
+<title>Aldéris</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cinzel+Decorative:wght@700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Concept : un sanctuaire nocturne. Barre latérale fixe à gauche, ciel étoilé vivant derrière un contenu centré, wiki lu comme un atlas. */
+:root{
+  --bg:#050813; --bg-side:#090f1c; --panel:#0c1424; --panel-2:#101b30; --field:#070d19; --line:#1b2943;
+  --text:#e9eef7; --muted:#8c98ae; --faint:#5d6a82;
+  --accent:#86cdf5;
+  --accent-soft:color-mix(in srgb,var(--accent) 14%,var(--bg));
+  --accent-line:color-mix(in srgb,var(--accent) 38%,var(--bg));
+  --danger:#f19a9a;
+  --f-display:'Cinzel Decorative','Cinzel',Georgia,serif;
+  --f-head:'Cinzel',Georgia,serif;
+  --f-prose:'Cormorant Garamond',Georgia,'Times New Roman',serif;
+  --f-ui:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --sbw:256px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--text);font:15px/1.6 var(--f-ui);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.muted{color:var(--muted)}
+.ic{flex:none}
+
+#sky{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+.app{position:relative;z-index:1;display:grid;grid-template-columns:var(--sbw) minmax(0,1fr);min-height:100vh}
+.main{min-width:0}
+.page{max-width:1080px;margin:0 auto;padding-block:36px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Barre latérale */
+.side{position:sticky;top:env(safe-area-inset-top,0px);height:100vh;height:100dvh;background:var(--bg-side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding-left:env(safe-area-inset-left,0px);z-index:20}
+.side-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:22px 16px 18px}
+.brand{font-family:var(--f-head);font-weight:600;font-size:18px;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);text-shadow:0 0 18px color-mix(in srgb,var(--accent) 45%,transparent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.icon-btn{display:grid;place-items:center;width:32px;height:32px;flex:none;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;color:var(--muted)}
+.icon-btn:hover{color:var(--text);border-color:var(--accent-line)}
+.icon-btn .ic{transition:transform .2s}
+nav.menu{display:flex;flex-direction:column;gap:4px;padding:8px;flex:1;min-height:0;overflow-y:auto}
+.nav{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 16px;border-radius:8px;border:1px solid transparent;background:none;color:#dbe3f1;font-weight:500;font-size:15px}
+.nav:hover{background:color-mix(in srgb,var(--panel-2) 70%,transparent)}
+.nav[aria-current=page]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.side-foot{padding:18px 16px;border-top:1px solid var(--line);text-align:center;font-family:var(--f-head);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.sub{display:flex;flex-direction:column;gap:2px;margin:2px 0 8px 29px;padding-left:12px;border-left:1px solid var(--line)}
+.sub-item{display:block;width:100%;text-align:left;padding:7px 12px;border:1px solid transparent;border-radius:6px;background:none;color:var(--muted);font-size:13.5px;font-weight:500}
+.sub-item:hover{color:var(--text);background:color-mix(in srgb,var(--panel-2) 70%,transparent)}
+.sub-item[aria-current]{color:var(--accent);background:var(--accent-soft)}
+.topbar,.scrim{display:none}
+
+@media (min-width:821px){
+  .app.collapsed{--sbw:68px}
+  .app.collapsed .brand,.app.collapsed .lbl,.app.collapsed .side-foot,.app.collapsed .sub{display:none}
+  .app.collapsed .side-top{justify-content:center;padding-inline:0}
+  .app.collapsed .nav{justify-content:center;padding-inline:0}
+  .app.collapsed .icon-btn .ic{transform:rotate(180deg)}
+}
+@media (max-width:820px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;left:0;top:0;bottom:0;height:auto;width:280px;max-width:86vw;transform:translateX(-102%);transition:transform .22s ease;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .app.open .side{transform:none}
+  .app.open .scrim{display:block;position:fixed;inset:0;background:rgba(3,5,12,.66);z-index:15}
+  .side-top .icon-btn{display:none}
+  .topbar{display:flex;align-items:center;gap:12px;position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:color-mix(in srgb,var(--bg-side) 94%,transparent);border-bottom:1px solid var(--line);padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .page{padding-block:24px 72px}
+}
+
+/* Accueil */
+.hero{display:grid;justify-items:center;text-align:center;padding-top:clamp(8px,3vw,32px)}
+.orbit{position:relative;width:min(580px,100%);aspect-ratio:1/1;max-width:100%;display:grid;place-items:center}
+.orbit::before{content:'';position:absolute;inset:14%;border-radius:50%;background:radial-gradient(closest-side,rgba(120,150,255,.14),transparent)}
+.orbit i{position:absolute;border-radius:50%}
+.orbit i:nth-of-type(1){inset:0;border:1px dashed color-mix(in srgb,var(--accent) 30%,transparent);animation:spin 260s linear infinite}
+.orbit i:nth-of-type(2){inset:9%;border:1px solid color-mix(in srgb,var(--accent) 34%,transparent)}
+.orbit i:nth-of-type(3){inset:20%;border:1px dashed color-mix(in srgb,var(--accent) 24%,transparent);animation:spin 190s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.orbit-in{position:relative;display:grid;justify-items:center;gap:14px;width:72%}
+.hero h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(2.4rem,9vw,5.2rem);line-height:1;letter-spacing:.03em;text-transform:uppercase;color:#fff;text-shadow:0 0 28px rgba(160,200,255,.45);text-wrap:balance;overflow-wrap:anywhere}
+.tagline{margin:0;font-family:var(--f-prose);font-size:clamp(1.05rem,2.6vw,1.3rem);line-height:1.55;color:#a3aec3}
+.cta{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;margin-top:20px}
+.hint{display:grid;justify-items:center;margin-top:34px;background:none;border:0;color:var(--faint);padding:4px}
+.hint .line{display:block;width:1px;height:34px;background:linear-gradient(var(--accent),transparent);animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+html.still *{animation:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.sec{margin-top:72px}
+.h-sec{margin:0 0 28px;text-align:center;font-family:var(--f-head);font-weight:500;font-size:clamp(1.6rem,4.2vw,2.4rem);letter-spacing:.04em;text-transform:uppercase;color:var(--accent);text-shadow:0 0 22px color-mix(in srgb,var(--accent) 40%,transparent);text-wrap:balance}
+.center{display:flex;justify-content:center;margin-top:28px}
+
+/* Boutons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:8px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 88%,transparent);color:var(--text);font-weight:600;font-size:14px;text-decoration:none;transition:border-color .15s,background .15s}
+.btn:hover{border-color:var(--accent-line)}
+.btn.primary{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.btn.primary:hover{background:color-mix(in srgb,var(--accent) 22%,var(--bg))}
+.btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 38%,var(--bg))}
+.btn.sm{padding:7px 12px;font-size:13px}
+.link{background:none;border:0;padding:0;color:var(--accent);font-weight:500;text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px;display:inline-flex;align-items:center;gap:6px}
+
+/* Cartes et grilles */
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.card{display:flex;flex-direction:column;gap:8px;min-width:0;padding:20px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 86%,transparent);text-decoration:none;transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--accent-line);transform:translateY(-2px)}
+.kicker{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.card h3{margin:0;font-family:var(--f-head);font-weight:600;font-size:1.08rem;letter-spacing:.03em;color:#f1f5fc;text-wrap:balance}
+.card p{margin:0;font-family:var(--f-prose);font-size:1.12rem;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .meta{font-size:12px;color:var(--faint)}
+
+.empty{display:grid;justify-items:center;gap:14px;padding:40px 20px;border:1px dashed var(--line);border-radius:12px;text-align:center;color:var(--muted);background:color-mix(in srgb,var(--panel) 60%,transparent)}
+.empty p{margin:0;font-family:var(--f-prose);font-size:1.2rem}
+.note{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:0 0 20px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--panel) 80%,transparent);color:var(--muted);font-size:13px}
+
+/* En-têtes de page */
+.ph{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:28px}
+.ph>div:first-child{min-width:0;flex:1 1 320px}
+.eyebrow{margin:0 0 6px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.ph h1{margin:0;font-family:var(--f-head);font-weight:600;font-size:clamp(1.8rem,5vw,2.8rem);letter-spacing:.03em;line-height:1.15;text-wrap:balance;overflow-wrap:anywhere}
+.lede{margin:10px 0 0;font-family:var(--f-prose);font-style:italic;font-size:1.3rem;color:#a3aec3;max-width:60ch}
+.ph-actions{display:flex;gap:10px;flex-wrap:wrap}
+.crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:22px;font-size:13px;color:var(--muted)}
+
+/* Wiki : recherche et filtres */
+.tools{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:18px}
+.search{position:relative;flex:1 1 240px;min-width:0}
+.search .ic{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--faint)}
+.search .in{padding-left:38px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 80%,transparent);color:var(--muted);font-size:13px;font-weight:500}
+.pill:hover{color:var(--text);border-color:var(--accent-line)}
+.pill[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.filters{margin-bottom:24px}
+
+/* Chroniques */
+.rows{display:grid;gap:14px}
+.row{display:grid;grid-template-columns:190px minmax(0,1fr);gap:20px;padding:20px 22px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 86%,transparent);text-decoration:none;transition:border-color .15s}
+.row:hover{border-color:var(--accent-line)}
+.row .when{font-family:var(--f-head);font-size:13px;letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
+.row .when small{display:block;margin-top:6px;font-family:var(--f-ui);font-size:12px;letter-spacing:.08em;color:var(--faint)}
+.row h3{margin:0 0 6px;font-family:var(--f-head);font-weight:600;font-size:1.25rem;letter-spacing:.03em}
+.row p{margin:0;font-family:var(--f-prose);font-size:1.18rem;line-height:1.45;color:var(--muted)}
+@media (max-width:640px){.row{grid-template-columns:minmax(0,1fr);gap:8px}}
+
+/* Entrée / chronique : lecture */
+.entry-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;align-items:start}
+.prose{font-family:var(--f-prose);font-size:1.28rem;line-height:1.7;color:#d6deec;max-width:62ch;min-width:0;overflow-wrap:anywhere}
+.prose p{margin:0 0 1em}
+.prose h3{margin:1.8em 0 .5em;font-family:var(--f-head);font-weight:600;font-size:1.02rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.prose ul{margin:0 0 1em;padding-left:1.2em}
+.prose li{margin-bottom:.25em}
+.xref{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px}
+.xref:hover{text-decoration-color:var(--accent)}
+.xref.missing{color:var(--muted);text-decoration-style:dotted;cursor:help}
+.infobox{position:sticky;top:24px;min-width:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:color-mix(in srgb,var(--panel) 90%,transparent)}
+.ib-head{display:grid;gap:2px;padding:14px 16px;background:var(--panel-2);border-bottom:1px solid var(--line)}
+.ib-head span{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.ib-head strong{font-family:var(--f-head);font-size:1.1rem;font-weight:600;letter-spacing:.03em;overflow-wrap:anywhere}
+.infobox dl{display:grid;grid-template-columns:minmax(70px,34%) minmax(0,1fr);gap:10px 14px;margin:0;padding:16px}
+.infobox dt{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.infobox dd{margin:0;font-family:var(--f-prose);font-size:1.08rem;line-height:1.35;overflow-wrap:anywhere}
+.refs{margin-top:48px}
+.refs h2{margin:0 0 14px;font-family:var(--f-head);font-weight:600;font-size:1rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.chip{display:inline-flex;flex-direction:column;padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--panel) 86%,transparent);text-decoration:none;font-weight:500}
+.chip:hover{border-color:var(--accent-line)}
+.chip small{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+@media (max-width:900px){
+  .entry-grid{grid-template-columns:minmax(0,1fr);gap:24px}
+  .infobox{position:static;order:-1}
+}
+
+/* Liens */
+.links{display:grid;gap:12px}
+.link-card{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 86%,transparent);text-decoration:none;min-width:0;transition:border-color .15s}
+.link-card:hover{border-color:var(--accent-line)}
+.link-card>div{min-width:0}
+.link-card strong{display:block;font-family:var(--f-head);font-weight:600;letter-spacing:.03em}
+.link-card .note-l{display:block;margin-top:2px;font-family:var(--f-prose);font-size:1.08rem;color:var(--muted)}
+.link-card .url{display:block;margin-top:2px;color:var(--faint);font-size:12px;overflow-wrap:anywhere}
+
+/* Calendrier */
+.cal-tools{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 16px;margin-bottom:22px}
+.cal-field{display:grid;gap:4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.cal-field .in{width:auto;min-width:170px}
+.cal-field #cal-y{width:110px;min-width:0}
+.cal-bar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px}
+.cal-bar h2,.cal-bar h3{margin:0;text-align:center;font-family:var(--f-head);font-weight:600;letter-spacing:.05em;text-transform:uppercase;text-wrap:balance;overflow-wrap:anywhere}
+.cal-bar h2{font-size:clamp(1rem,2.6vw,1.45rem)}
+.cal-bar h3{font-size:clamp(1.1rem,3vw,1.7rem);color:var(--accent);text-shadow:0 0 20px color-mix(in srgb,var(--accent) 35%,transparent)}
+.cal-bar.m{margin:20px 0 14px}
+.cal-nav{padding:10px 16px;border:1px solid var(--accent-line);border-radius:8px;background:var(--accent-soft);color:var(--accent);font-weight:600;font-size:14px;white-space:nowrap}
+.cal-nav:hover{background:color-mix(in srgb,var(--accent) 22%,var(--bg))}
+.cal-nav.sq{padding:7px 14px;font-size:20px;line-height:1}
+.cal-grid{display:grid;grid-template-columns:repeat(var(--cols,7),minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.wd{padding:10px 4px;text-align:center;font-family:var(--f-head);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--panel-2);overflow:hidden;text-overflow:ellipsis}
+.day{position:relative;display:flex;flex-direction:column;align-items:flex-start;min-width:0;min-height:112px;padding:10px 12px;background:color-mix(in srgb,var(--panel) 82%,var(--bg))}
+.day.blank{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--panel) 70%,var(--bg)) 0 6px,var(--bg-side) 6px 12px)}
+.dn{display:grid;place-items:center;min-width:26px;height:26px;border-radius:50%;font-size:15px;font-weight:500}
+.day.today .dn{background:var(--accent);color:var(--bg);font-weight:700}
+.moons{position:absolute;top:10px;right:10px;display:flex;gap:4px}
+.mn{display:block;line-height:0}
+.moon{display:block}
+.ev{display:block;max-width:100%;margin-top:auto;padding:2px 7px;border:1px solid var(--accent-line);border-radius:5px;background:var(--accent-soft);color:var(--accent);font-size:11.5px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.day .dn+.moons+.ev{margin-top:10px}
+.cal-legend{display:flex;flex-wrap:wrap;gap:8px 26px;margin-top:16px;color:var(--muted);font-size:13px}
+.lg{display:inline-flex;align-items:center;gap:8px}
+.lg .dot{display:block;width:12px;height:12px;border-radius:50%;background:var(--accent)}
+.cal-events{margin-top:26px}
+.cal-events h4{margin:0 0 12px;font-family:var(--f-head);font-weight:600;font-size:1rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.cal-events ul{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.cal-events li{display:flex;gap:14px;align-items:baseline;font-family:var(--f-prose);font-size:1.2rem}
+.cal-events b{min-width:2.2em;font-family:var(--f-head);font-size:.95rem;color:var(--accent)}
+.year-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-top:20px}
+.mini{display:grid;gap:10px;align-content:start;min-width:0;padding:14px;text-align:left;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--panel) 86%,transparent);transition:border-color .15s}
+.mini:hover,.mini.cur{border-color:var(--accent-line)}
+.mini-t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-family:var(--f-head);font-weight:600;letter-spacing:.04em}
+.mini-t small{font-family:var(--f-ui);font-size:11px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase}
+.mini-grid{display:grid;grid-template-columns:repeat(var(--cols,7),minmax(0,1fr));gap:2px;text-align:center;font-size:11.5px;color:var(--muted)}
+.mh{color:var(--accent);font-weight:600}
+.md{padding:3px 0;border-radius:50%}
+.md.today{background:var(--accent);color:var(--bg);font-weight:700}
+@media (max-width:640px){
+  .cal-bar{gap:8px}
+  .cal-nav{padding:9px 11px;font-size:13px}
+  .wd{padding:8px 0;font-size:10px;letter-spacing:.02em}
+  .day{min-height:68px;padding:5px 3px;align-items:center}
+  .dn{min-width:22px;height:22px;font-size:13px}
+  .moons{position:static;margin-top:4px;gap:2px}
+  .moon{width:10px;height:10px}
+  .ev{width:6px;height:6px;margin-top:4px!important;padding:0;border-radius:50%;font-size:0;background:var(--accent)}
+  .day .dn+.moons+.ev{margin-top:4px}
+}
+
+/* Recherche */
+.in{width:100%;background:var(--field);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit}
+.in:focus{outline:none;border-color:var(--accent)}
+
+/* Plans de l'existence */
+.planes{margin:8px 0 40px}
+.planes-fig svg{display:block;width:100%;height:auto;max-width:700px;margin:0 auto}
+.plane-hint{margin:14px 0 0;min-height:1.6em;text-align:center;color:var(--muted);font-size:14px}
+.plane-hint strong{color:var(--text);font-family:var(--f-head);letter-spacing:.04em}
+.pl{cursor:pointer;outline:none}
+.pl .shape{fill:var(--c);fill-opacity:.2;stroke:var(--c);stroke-width:1.5;transition:fill-opacity .15s}
+.pl:hover .shape{fill-opacity:.4}
+.pl.sel .shape{fill-opacity:.5;stroke:#fff;stroke-width:2.5}
+.pl:focus-visible .shape{stroke:var(--accent);stroke-width:4}
+.pl .lbl{fill:#f1f5fc;font-family:var(--f-head);font-size:24px;font-weight:600;letter-spacing:.04em;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.pl .lbl.up{font-size:21px;letter-spacing:.22em;text-transform:uppercase}
+.stars circle{fill:#dfe8ff}
+.plane-map{padding:12px 14px 6px;border-bottom:1px solid var(--line)}
+.plane-map svg{display:block;width:100%;height:auto}
+.plane-map .pl .lbl{font-size:28px}
+.plane-map .pl .lbl.up{font-size:26px;letter-spacing:.1em}
+.plane-main{min-width:0}
+.grp{margin:0 0 14px;font-family:var(--f-head);font-weight:600;font-size:1rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.grp small{margin-left:6px;font-family:var(--f-ui);font-size:12px;letter-spacing:0;color:var(--faint)}
+.grp.idx{margin-top:40px}
+.grp-block{margin-bottom:28px}
+</style></style>
+
+<canvas id="sky" aria-hidden="true"></canvas>
+
+<div class="app" id="app">
+  <aside class="side" id="side">
+    <div class="side-top">
+      <span class="brand" id="brand"></span>
+      <button class="icon-btn" data-act="collapse" aria-label="Réduire le menu" title="Réduire le menu"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+    </div>
+    <nav class="menu" id="nav" aria-label="Navigation principale"></nav>
+    <div class="side-foot">Sous les étoiles</div>
+  </aside>
+  <div class="scrim" data-act="menu-close"></div>
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" data-act="menu" aria-label="Ouvrir le menu"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button>
+      <span class="brand" id="brand-m"></span>
+    </header>
+    <main class="page" id="view"></main>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var KEY='worldwiki-prefs-v1';
+function $(s,r){return (r||document).querySelector(s);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function uid(p){return p+Math.random().toString(36).slice(2,8);}
+var RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+var ICON={
+ star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+ scroll:'<path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
+ book:'<path d="M10 2v8l3-3 3 3V2"/><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>',
+ bookopen:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+ user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+ external:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+ gear:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+ back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+ plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+ pencil:'<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+ search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+ copy:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+ wand:'<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',
+ calendar:'<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+ link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'
+};
+function ic(n,sz){sz=sz||18;return '<svg class="ic" width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICON[n]+'</svg>';}
+
+/* ---------- Données ---------- */
+function seed(){
+return {
+ settings:{name:'Aldéris',tagline:'Parcourez les chroniques, consultez le wiki et suivez les fils de la Trame à travers un monde éclairé par deux lunes.',accent:'#86cdf5',sky:true,anim:!RM,density:1,collapsed:false},
+ chronicles:[
+  {id:'c-phare',title:'Le Phare sans flamme',date:'An 415, mois des Cendres',tag:'Arc II',
+   summary:'Fort-Veille s’éteint pour la première fois depuis la fondation de l’Ordre.',
+   body:`Pour la première fois depuis la fondation de l'Ordre, les trois feux du phare de Fort-Veille se sont éteints en même temps. Les veilleurs de garde jurent n'avoir rien vu, rien entendu.
+
+La [[La Trame|Trame]] vibrait, disent-ils, comme une corde qu'on vient de lâcher. Une enquête est ouverte, et [[Maëlis Corvane]] a interdit à quiconque de rallumer le phare avant d'en connaître la cause.
+
+## Ce que l'on sait
+
+- Les trois feux se sont éteints à la même minute
+- Orm était basse sur l'horizon, d'un rouge inhabituel
+- Aucun veilleur n'a quitté son poste cette nuit-là`},
+  {id:'c-pacte',title:'Le Pacte de Vellmar',date:'An 413, mois des Semailles',tag:'Arc I',
+   summary:'Les cités du sud placent leurs greniers sous la garde de l’Ordre, à contrecœur.',
+   body:`Les cités du Val de Vellmar ont accepté de placer leurs greniers sous la garde de l'[[Ordre des Veilleurs]]. En échange, l'Ordre s'engage à ne jamais fermer les routes du sud.
+
+Le pacte tient en une page. [[Maëlis Corvane]] l'a signé la première, puis a quitté la salle avant les discours, ce que les cités ont pris pour un affront.`},
+  {id:'c-lunes',title:'La Nuit des Deux Lunes',date:'An 412, mois des Brumes',tag:'Arc I',
+   summary:'Séléa et Orm se rejoignent au-dessus des Hautes-Brumes, et la Trame s’ouvre.',
+   body:`Cette année-là, [[Les Deux Lunes|Séléa et Orm]] se sont rejointes au-dessus des [[Les Hautes-Brumes|Hautes-Brumes]], et la brume s'est levée pour la première fois depuis des siècles.
+
+On raconte que [[Maëlis Corvane]] a passé la nuit sur la tour de Fort-Veille, les yeux fixés sur [[La Trame|les fils de lumière]] qui descendaient du ciel. Au matin, trois villages avaient perdu leur nom de mémoire, et personne n'a su dire lequel était le plus proche de la faille.
+
+## Ce qui a changé
+
+- Les passes du nord sont restées fermées pendant onze jours
+- Les [[Les Cendreux|Cendreux]] ont envoyé une ambassade pour la première fois
+- Orm est restée rouge jusqu'à l'hiver`}
+ ],
+ wiki:[
+  {id:'w-monde',cat:'Monde',plane:'material',title:'Aldéris',
+   summary:'Le monde connu, enveloppé de brume et éclairé par deux lunes.',
+   fields:[['Type','Monde habité'],['Lunes','[[Les Deux Lunes|Séléa et Orm]]'],['Calendrier','Années depuis la Chute, An 415 en cours'],['Magie','[[La Trame]]']],
+   body:`Aldéris est un monde de plateaux, de forêts hautes et de côtes que la brume ne quitte jamais tout à fait. Ses habitants disent qu'il est né d'une étoile tombée, dont les restes forment [[La Trame]].
+
+## Régions
+
+- [[Les Hautes-Brumes]], plateaux du nord
+- Le Val de Vellmar, grenier du sud
+- Les Marches cendrées, terres des [[Les Cendreux|Cendreux]], à l'est
+
+## Pouvoirs en place
+
+Aucun royaume ne tient tout le continent. L'[[Ordre des Veilleurs]] garde les passes de la Trame et arbitre les conflits entre les cités libres.`},
+  {id:'w-lunes',cat:'Cosmos',plane:'material',title:'Les Deux Lunes',
+   summary:'Séléa la blanche règle les saisons, Orm la cendrée annonce les orages de la Trame.',
+   fields:[['Séléa','Lune blanche, cycle de 29 jours'],['Orm','Lune cendrée, cycle de 71 jours'],['Alignement','Tous les sept ans environ']],
+   body:`Séléa règle les marées et les semailles. Orm, plus petite et plus lente, pâlit ou rougit selon l'état de [[La Trame]].
+
+## L'alignement
+
+Quand les deux lunes se rejoignent, la Trame devient visible à l'œil nu. Les [[Ordre des Veilleurs|Veilleurs]] scellent alors les passes. Le dernier alignement a donné lieu à [[La Nuit des Deux Lunes]].`},
+  {id:'w-brumes',cat:'Lieu',plane:'material',title:'Les Hautes-Brumes',
+   summary:'Plateaux du nord, battus par une brume que le vent ne dissipe jamais.',
+   fields:[['Type','Plateau'],['Climat','Brume permanente, hivers longs'],['Place forte','Fort-Veille'],['Dirigeante','[[Maëlis Corvane]]']],
+   body:`Les Hautes-Brumes s'élèvent à mille mètres au-dessus de la côte. On n'y cultive que l'orge et le lichen, et l'on y élève des chèvres à la laine épaisse.
+
+Les routes sont balisées par des cairns que les veilleurs repeignent chaque automne. Qui s'écarte du balisage se perd, parfois pour de bon.
+
+## Fort-Veille
+
+Siège de l'[[Ordre des Veilleurs]], bâti autour d'un phare à trois feux que l'on voit de la plaine par temps clair.`},
+  {id:'w-ordre',cat:'Faction',plane:'material',title:'Ordre des Veilleurs',
+   summary:'Gardiens des passes de la Trame, installés à Fort-Veille depuis l’An 37.',
+   fields:[['Fondation','An 37'],['Siège','Fort-Veille, [[Les Hautes-Brumes]]'],['Emblème','Un phare à trois feux'],['Dirigeante','[[Maëlis Corvane]]']],
+   body:`L'Ordre naît d'un serment simple : surveiller le ciel et fermer les passes quand la [[La Trame|Trame]] s'ouvre. Ses membres ne possèdent rien en propre et logent au fort.
+
+## Organisation
+
+Chaque veilleur choisit une lune à suivre, [[Les Deux Lunes|Séléa ou Orm]], et tient un registre de ses variations pendant toute sa vie.`},
+  {id:'w-maelis',cat:'Personnage',plane:'material',title:'Maëlis Corvane',
+   summary:'Haute-Veilleuse, connue pour ses silences et son registre jamais ouvert devant témoin.',
+   fields:[['Titre','Haute-Veilleuse'],['Peuple','Humaine'],['Âge','54 ans'],['Affiliation','[[Ordre des Veilleurs]]']],
+   body:`Maëlis Corvane dirige l'[[Ordre des Veilleurs]] depuis onze ans. Elle parle peu, écrit beaucoup, et ne laisse personne lire son registre.
+
+Elle a signé le pacte de Vellmar le jour même où elle a appris qu'elle devrait le rompre. Personne, à Fort-Veille, ne sait pourquoi.`},
+  {id:'w-trame',cat:'Magie',plane:'astral',title:'La Trame',
+   summary:'Réseau de fils lumineux hérité d’une étoile tombée, lisible à l’œil nu quand les lunes s’alignent.',
+   fields:[['Source','Résidus d’une étoile tombée'],['Lecture','À l’œil nu, par ciel dégagé'],['Coût','La fatigue, puis l’oubli']],
+   body:`La Trame est ce qui reste de l'étoile qui a donné naissance à [[Aldéris]]. On la voit comme une dentelle de lumière, plus nette les nuits où [[Les Deux Lunes|les deux lunes]] s'alignent.
+
+## Tirer un fil
+
+Un lecteur de la Trame peut déplacer une vibration d'un point à un autre. Chaque fil tiré coûte un souvenir, d'abord petit, puis de moins en moins.`},
+  {id:'w-cendreux',cat:'Peuple',plane:'material',title:'Les Cendreux',
+   summary:'Peuple des Marches cendrées, à la peau grise et aux yeux ambrés.',
+   fields:[['Habitat','Marches cendrées'],['Longévité','Environ 90 ans'],['Langue','Cendrien'],['Relations','Méfiants envers l’[[Ordre des Veilleurs]]']],
+   body:`Les Cendreux vivent à l'est, là où les sols gardent la couleur des anciens incendies. Ils disent que leurs ancêtres ont marché dans la [[La Trame|Trame]] et qu'elle les a teints.
+
+Ils tiennent leurs comptes sur des cordes nouées, et s'étonnent que d'autres peuples écrivent sur des surfaces qui brûlent.`},
+  {id:'w-braise',cat:'Lieu',plane:'fire',title:'Citadelle de Braise',
+   summary:'Forteresse d’obsidienne bâtie sur un fleuve de lave qui ne refroidit jamais.',
+   fields:[['Type','Forteresse'],['Habitants','Forgerons et ambassadeurs des flammes']],
+   body:`La Citadelle de Braise domine un fleuve de lave aussi large qu'une mer. Ses murailles d'obsidienne se fendent chaque soir et sont refaites chaque matin par ses habitants.
+
+Les voyageurs venus du [[Plan matériel]] y sont reçus avec méfiance, mais jamais refusés : l'hospitalité y est une affaire de feu partagé.`},
+  {id:'w-nuees',cat:'Lieu',plane:'air',title:'Archipel des Nuées',
+   summary:'Îles de pierre légère qui dérivent au gré des vents éternels.',
+   fields:[['Type','Archipel flottant'],['Dangers','Tempêtes vivantes']],
+   body:`Les îles de l'Archipel des Nuées ne restent jamais au même endroit. Les pilotes de vent y tracent des cartes qui ne valent que pour une journée.
+
+Une route relie encore l'archipel au [[Plan matériel]], mais elle change de sommet à chaque saison.`},
+  {id:'w-cloches',cat:'Lieu',plane:'upper',title:'Cité des Cent Cloches',
+   summary:'Cité de lumière dont les cloches sonnent le jugement des âmes.',
+   fields:[['Type','Cité sacrée'],['Accès','Sur invitation']],
+   body:`Chaque tour de la Cité des Cent Cloches abrite une cloche qui sonne une vertu. On dit que l'on n'y entre qu'en répondant sincèrement à la question que la cloche pose.
+
+Les voyageurs y arrivent par le [[Plan astral]] et en repartent changés.`},
+  {id:'w-fosse',cat:'Lieu',plane:'lower',title:'La Fosse sans Fond',
+   summary:'Gouffre vertigineux dont chaque palier est tenu par un seigneur de la ruine.',
+   fields:[['Type','Gouffre'],['Dangers','Tous']],
+   body:`Personne n'a jamais touché le fond de la Fosse. Chaque palier est tenu par un seigneur qui convoite le monde des vivants, et les failles qui s'ouvrent parfois dans le [[Plan matériel]] mènent toutes à l'un de ces paliers.`}
+ ],
+ links:[
+  {id:'l1',label:'Carte du monde',url:'https://example.com/carte',note:'Carte interactive des royaumes et des routes'},
+  {id:'l2',label:'Dossier de campagne',url:'https://example.com/campagne',note:'Notes de session et plans à venir'},
+  {id:'l3',label:'Serveur Discord',url:'https://example.com/discord',note:'Discussion avec les joueurs'}
+ ]
+};}
+/* ===== CALENDRIER DU MONDE : à adapter ===== */
+var CAL={
+ era:'Ère de l’Aube',
+ weekdays:['Solis','Lunis','Terris','Aquis','Ignis','Ventis','Noctis'],
+ months:[
+  {n:'Givrelune',d:30},{n:'Neigeclaire',d:30},{n:'Dégelaube',d:30},{n:'Fleurombre',d:30},
+  {n:'Verdelune',d:30},{n:'Hautsoleil',d:30},{n:'Brasecime',d:30},{n:'Moissonaire',d:30},
+  {n:'Ocrefeuille',d:30},{n:'Cendrebrume',d:30},{n:'Veillegel',d:30},{n:'Nuitlongue',d:30}
+ ],
+ epochWeekday:2,            /* jour de la semaine du 1er jour de l'an 1 (0 = premier nom de la liste) */
+ today:{y:1042,m:4,d:12},   /* date actuelle dans le récit (le mois va de 1 à 12) */
+ moons:[                    /* full = une date où cette lune est pleine, cycle = durée en jours */
+  {n:'Séléa',cycle:29,color:'#f2f6ff',full:{y:1042,m:4,d:12}},
+  {n:'Orm',cycle:71,color:'#e6b9a6',full:{y:1042,m:3,d:5}}
+ ],
+ events:[                   /* sans y, l'événement revient chaque année */
+  {m:1,d:1,title:'Nouvel an'},
+  {m:4,d:20,title:'Fête des Semailles'},
+  {y:1042,m:4,d:25,title:'Conseil des Veilleurs'}
+ ]
+};
+
+/* ===== PLANS DE L’EXISTENCE : à adapter ===== */
+var PLANES_CAT='Cosmos'; /* catégorie du wiki sous laquelle s’affiche le schéma */
+var PLANES=[
+ {id:'upper',name:'Plan supérieur',tag:'Au-dessus de tout',color:'#f3d98b',
+  text:'Séjour des puissances de lumière et d’ordre. Il se trouve au-delà du plan astral et ne s’atteint que par la grâce d’une divinité.',
+  facts:[['Position','Au-delà du plan astral, vers le haut'],['Accès','Par l’astral, sur invitation']]},
+ {id:'astral',name:'Plan astral',tag:'Enveloppe',color:'#a78bfa',
+  text:'Océan d’argent sans haut ni bas qui enveloppe les plans intérieurs. On y voyage par la pensée, et les fils de [[La Trame]] le traversent.',
+  facts:[['Position','Autour du plan matériel et des plans élémentaires'],['Accès','Par la magie ou le rêve profond']]},
+ {id:'material',name:'Plan matériel',tag:'Plan central',color:'#6fcf97',
+  text:'Le monde des vivants, de la pierre et du temps qui passe. [[Aldéris]] s’y trouve, éclairé par [[Les Deux Lunes|Séléa et Orm]]. Tous les autres plans le touchent, de près ou de loin.',
+  facts:[['Position','Au centre de tous les plans'],['Voisins','Les six plans élémentaires']]},
+ {id:'lower',name:'Plan inférieur',tag:'Sous toute chose',color:'#e06a6a',
+  text:'Fosses et abîmes où règnent les puissances de ruine. Ses couloirs plongent plus bas que n’importe quel autre plan, et ses habitants convoitent le monde des vivants.',
+  facts:[['Position','Au-delà du plan astral, vers le bas'],['Accès','Par l’astral, ou par les failles du monde']]}
+];
+/* Les six plans élémentaires, dans l’ordre autour du plan matériel (le premier est en haut, puis dans le sens des aiguilles d’une montre) */
+var ELEMENTS=[
+ {id:'air',short:'Air',name:'Plan de l’Air',color:'#9fd8ff',text:'Vents sans fin, îles de nuages et tempêtes vivantes. Rien n’y est fixe, et la chute y est un mode de vie.'},
+ {id:'wood',short:'Bois',name:'Plan du Bois',color:'#6cc16e',text:'Forêts sans fin dont chaque arbre est un monde. La vie y repousse plus vite qu’on ne la détruit.'},
+ {id:'water',short:'Eau',name:'Plan de l’Eau',color:'#4f9cf0',text:'Océan sans rivage où les courants dessinent des routes. Les profondeurs y sont plus peuplées que la surface.'},
+ {id:'earth',short:'Terre',name:'Plan de la Terre',color:'#b98f5e',text:'Masse infinie de roche, de cristal et de minerai brut. On y avance en creusant, et les galeries se referment derrière le voyageur.'},
+ {id:'fire',short:'Feu',name:'Plan du Feu',color:'#ff7d4d',text:'Mers de braise, forteresses de lave et ciel de cendres incandescentes. La chaleur y est la seule loi.'},
+ {id:'metal',short:'Métal',name:'Plan du Métal',color:'#b9c4d4',text:'Plaines de lames, cités d’engrenages et montagnes de minerai. Tout y est froid, précis et durable.'}
+];
+
+function load(){
+  var base=seed();
+  try{var raw=localStorage.getItem(KEY);if(raw){var d=JSON.parse(raw);if(d&&d.settings&&d.settings.collapsed)base.settings.collapsed=true;}}catch(e){}
+  return base;
+}
+var S=load();
+function save(){try{localStorage.setItem(KEY,JSON.stringify({settings:{collapsed:!!S.settings.collapsed}}));}catch(e){}}
+
+/* ---------- Texte enrichi ---------- */
+function actOf(k){return k==='entry'?'open-entry':k==='plane'?'plane':'open-chron';}
+function byTitle(t){
+  t=String(t).toLowerCase();
+  var e=S.wiki.find(function(x){return x.title.toLowerCase()===t;});
+  if(e)return {kind:'entry',id:e.id,title:e.title,cat:e.cat};
+  e=S.chronicles.find(function(x){return x.title.toLowerCase()===t;});
+  if(e)return {kind:'chronicle',id:e.id,title:e.title,cat:'Chronique'};
+  var pl=planeList().filter(function(p){return p.name.toLowerCase()===t;})[0];
+  if(pl)return {kind:'plane',id:pl.id,title:pl.name,cat:pl.tag};
+  return null;
+}
+function inline(s){
+  return String(s||'').split(/(\[\[[^\]]+\]\])/g).map(function(p,i){
+    if(i%2){
+      var raw=p.slice(2,-2),parts=raw.split('|'),t=parts[0].trim(),label=(parts[1]||parts[0]).trim(),r=byTitle(t);
+      return r?'<a class="xref" href="#" data-act="'+actOf(r.kind)+'" data-id="'+r.id+'">'+esc(label)+'</a>'
+              :'<span class="xref missing" title="Cette entrée n’existe pas encore">'+esc(label)+'</span>';
+    }
+    return esc(p).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>');
+  }).join('');
+}
+function prose(text){
+  return String(text||'').trim().split(/\n{2,}/).map(function(b){
+    b=b.trim();if(!b)return '';
+    if(b.indexOf('## ')===0)return '<h3>'+inline(b.slice(3))+'</h3>';
+    var lines=b.split('\n');
+    if(lines.every(function(l){return l.indexOf('- ')===0;}))return '<ul>'+lines.map(function(l){return '<li>'+inline(l.slice(2))+'</li>';}).join('')+'</ul>';
+    return '<p>'+inline(b).replace(/\n/g,'<br>')+'</p>';
+  }).join('');
+}
+function refsIn(text){
+  var out=[];
+  (String(text||'').match(/\[\[([^\]]+)\]\]/g)||[]).forEach(function(m){
+    var r=byTitle(m.slice(2,-2).split('|')[0].trim());
+    if(r&&!out.some(function(o){return o.id===r.id;}))out.push(r);
+  });
+  return out;
+}
+function backlinks(title,selfId){
+  var rx=new RegExp('\\[\\['+title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(\\||\\]\\])','i'),out=[];
+  S.wiki.forEach(function(e){
+    if(e.id===selfId)return;
+    var hay=e.summary+'\n'+e.body+'\n'+e.fields.map(function(f){return f[1];}).join('\n');
+    if(rx.test(hay))out.push({kind:'entry',id:e.id,title:e.title,cat:e.cat});
+  });
+  S.chronicles.forEach(function(c){
+    if(c.id===selfId)return;
+    if(rx.test(c.summary+'\n'+c.body))out.push({kind:'chronicle',id:c.id,title:c.title,cat:'Chronique'});
+  });
+  return out;
+}
+function chip(r){return '<a class="chip" href="#" data-act="'+actOf(r.kind)+'" data-id="'+r.id+'"><small>'+esc(r.cat)+'</small>'+esc(r.title)+'</a>';}
+function emptyBox(text){return '<div class="empty"><p>'+text+'</p></div>';}
+function missing(view){return '<div class="empty"><p>Cette page n’existe plus.</p><button class="btn" data-act="nav" data-view="'+view+'">Retour à la liste</button></div>';}
+
+/* ---------- Navigation ---------- */
+var NAV=[['sanctum','Sanctum','star'],['chronicles','Chroniques','scroll'],['wiki','Wiki','book'],['calendar','Calendrier','calendar'],['links','Liens','link']];
+var V={name:'sanctum',id:null},hist=[],q='';
+function navOf(){return {chronicle:'chronicles',entry:'wiki',category:'wiki',plane:'wiki'}[V.name]||V.name;}
+function activeCat(){
+  if(V.name==='category')return V.id;
+  if(V.name==='plane')return PLANES_CAT;
+  if(V.name==='entry'){var e=S.wiki.find(function(x){return x.id===V.id;});return e?e.cat:null;}
+  return null;
+}
+function go(name,id){hist.push(V);if(hist.length>40)hist.shift();V={name:name,id:id||null};closeDrawer();render();window.scrollTo(0,0);}
+function back(){V=hist.pop()||{name:'wiki',id:null};render();window.scrollTo(0,0);}
+function wikiCats(){
+  var out=[],seen={};
+  S.wiki.forEach(function(e){if(e.cat&&!seen[e.cat]){seen[e.cat]=1;out.push(e.cat);}});
+  if(!seen[PLANES_CAT])out.push(PLANES_CAT);
+  return out.sort(function(a,b){return a.localeCompare(b,'fr');});
+}
+function renderNav(){
+  $('#nav').innerHTML=NAV.map(function(n){
+    var on=navOf()===n[0]&&!(n[0]==='wiki'&&V.name!=='wiki');
+    var h='<button class="nav" data-act="nav" data-view="'+n[0]+'" title="'+n[1]+'"'+(on?' aria-current="page"':'')+'>'+ic(n[2])+'<span class="lbl">'+n[1]+'</span></button>';
+    if(n[0]==='wiki'){
+      var cs=wikiCats();
+      if(cs.length)h+='<div class="sub" role="group" aria-label="Thèmes du wiki">'+cs.map(function(c){
+        return '<button class="sub-item" data-act="theme" data-cat="'+esc(c)+'"'+(activeCat()===c?' aria-current="true"':'')+'>'+esc(c)+'</button>';
+      }).join('')+'</div>';
+    }
+    return h;
+  }).join('');
+}
+function refreshBrand(){$('#brand').textContent=S.settings.name;$('#brand-m').textContent=S.settings.name;}
+function closeDrawer(){$('#app').classList.remove('open');}
+
+/* ---------- Vues ---------- */
+function chronCard(c){
+  return '<a class="card" href="#" data-act="open-chron" data-id="'+c.id+'"><span class="kicker">'+esc(c.date)+'</span><h3>'+esc(c.title)+'</h3><p>'+esc(c.summary)+'</p></a>';
+}
+function entryCard(e){
+  return '<a class="card" href="#" data-act="open-entry" data-id="'+e.id+'"><span class="kicker">'+esc(e.cat)+'</span><h3>'+esc(e.title)+'</h3><p>'+esc(e.summary)+'</p></a>';
+}
+function vSanctum(){
+  var ch=S.chronicles.slice(0,3),en=S.wiki.slice(0,6);
+  return '<section class="hero"><div class="orbit"><i></i><i></i><i></i><div class="orbit-in"><h1>'+esc(S.settings.name)+'</h1><p class="tagline">'+esc(S.settings.tagline)+'</p></div></div>'
+   +'<div class="cta"><button class="btn primary" data-act="nav" data-view="chronicles">'+ic('wand',16)+' Lire les chroniques</button><button class="btn" data-act="nav" data-view="wiki">'+ic('bookopen',16)+' Explorer le wiki</button></div>'
+   +'<button class="hint" data-act="scroll-next" aria-label="Voir la suite"><span class="line"></span>'+ic('down',16)+'</button></section>'
+   +'<section class="sec" id="recent"><h2 class="h-sec">Chroniques récentes</h2>'
+   +(ch.length?'<div class="grid">'+ch.map(chronCard).join('')+'</div><div class="center"><button class="btn" data-act="nav" data-view="chronicles">Toutes les chroniques</button></div>':emptyBox('Aucune chronique pour le moment.','chronicle','Écrire une chronique'))
+   +'</section><section class="sec"><h2 class="h-sec">Dans le wiki</h2>'
+   +(en.length?'<div class="grid">'+en.map(entryCard).join('')+'</div><div class="center"><button class="btn" data-act="nav" data-view="wiki">Tout le wiki</button></div>':emptyBox('Le wiki attend sa première entrée.','entry','Créer une entrée'))
+   +'</section>';
+}
+function vChronicles(){
+  return '<header class="ph"><div><p class="eyebrow">Récits</p><h1>Chroniques</h1><p class="lede">L’histoire du monde, racontée dans l’ordre où elle s’est écrite.</p></div></header>'
+   +(S.chronicles.length?'<div class="rows">'+S.chronicles.map(function(c){
+      return '<a class="row" href="#" data-act="open-chron" data-id="'+c.id+'"><div class="when">'+esc(c.date||'Sans date')+(c.tag?'<small>'+esc(c.tag)+'</small>':'')+'</div><div><h3>'+esc(c.title)+'</h3><p>'+esc(c.summary)+'</p></div></a>';
+    }).join('')+'</div>':emptyBox('Aucune chronique pour le moment.','chronicle','Écrire une chronique'));
+}
+function vChronicle(){
+  var c=S.chronicles.find(function(x){return x.id===V.id;});
+  if(!c)return missing('chronicles');
+  var refs=refsIn(c.body+' '+c.summary).filter(function(r){return r.id!==c.id;});
+  return '<article><div class="crumbs"><button class="link" data-act="back">'+ic('back',16)+' Retour</button><span>Chroniques</span></div>'
+   +'<header class="ph"><div><p class="eyebrow">'+esc(c.date||'Sans date')+(c.tag?' · '+esc(c.tag):'')+'</p><h1>'+esc(c.title)+'</h1>'+(c.summary?'<p class="lede">'+inline(c.summary)+'</p>':'')+'</div>'
+   +'</header>'
+   +'<div class="prose">'+(c.body?prose(c.body):'<p class="muted">Cette chronique est encore vide.</p>')+'</div>'
+   +(refs.length?'<section class="refs"><h2>Entrées citées</h2><div class="chips">'+refs.map(chip).join('')+'</div></section>':'')+'</article>';
+}
+function catCount(c){return S.wiki.filter(function(e){return e.cat===c;}).length;}
+function wikiHub(){
+  if(!S.wiki.length)return emptyBox('Le wiki attend sa première entrée.');
+  var tiles=wikiCats().map(function(c){
+    var n=catCount(c),sub=c===PLANES_CAT?'Schéma des plans de l’existence':n+(n>1?' entrées':' entrée');
+    return '<a class="card" href="#" data-act="theme" data-cat="'+esc(c)+'"><span class="kicker">Thème</span><h3>'+esc(c)+'</h3><p>'+esc(sub)+'</p></a>';
+  }).join('');
+  var all=S.wiki.slice().sort(function(a,b){return a.title.localeCompare(b.title,'fr');}).map(function(e){return chip({kind:'entry',id:e.id,title:e.title,cat:e.cat});}).join('');
+  return '<h2 class="grp">Explorer par thème</h2><div class="grid">'+tiles+'</div><h2 class="grp idx">Toutes les entrées <small>'+S.wiki.length+'</small></h2><div class="chips">'+all+'</div>';
+}
+function wikiResults(){
+  var n=q.trim().toLowerCase();
+  if(!n)return wikiHub();
+  var list=S.wiki.filter(function(e){
+    return (e.title+' '+e.cat+' '+e.summary+' '+e.body+' '+e.fields.map(function(f){return f[0]+' '+f[1];}).join(' ')).toLowerCase().indexOf(n)>-1;
+  });
+  if(!list.length)return '<div class="empty"><p>Aucune entrée ne correspond à cette recherche.</p></div>';
+  return '<div class="grid">'+list.map(entryCard).join('')+'</div>';
+}
+function vWiki(){
+  return '<header class="ph"><div><p class="eyebrow">Encyclopédie</p><h1>Wiki</h1><p class="lede">Lieux, peuples, factions et pouvoirs du monde, reliés entre eux.</p></div></header>'
+   +'<div class="tools"><label class="search">'+ic('search',16)+'<input id="q" class="in" type="search" placeholder="Rechercher une entrée" autocomplete="off" value="'+esc(q)+'"></label></div>'
+   +'<div id="results">'+wikiResults()+'</div>';
+}
+function vEntry(){
+  var e=S.wiki.find(function(x){return x.id===V.id;});
+  if(!e)return missing('wiki');
+  var bl=backlinks(e.title,e.id),pl=e.plane?planeById(e.plane):null;
+  return '<article><div class="crumbs"><button class="link" data-act="back">'+ic('back',16)+' Retour</button><button class="link" data-act="nav" data-view="wiki">Wiki</button><span aria-hidden="true">/</span><button class="link" data-act="theme" data-cat="'+esc(e.cat)+'">'+esc(e.cat)+'</button></div>'
+   +'<header class="ph"><div><p class="eyebrow">'+esc(e.cat)+'</p><h1>'+esc(e.title)+'</h1>'+(e.summary?'<p class="lede">'+inline(e.summary)+'</p>':'')+'</div>'
+   +'</header>'
+   +'<div class="entry-grid"><div class="prose">'+(e.body?prose(e.body):'<p class="muted">Cette entrée n’a pas encore de contenu.</p>')+'</div>'
+   +((e.fields.length||pl)?'<aside class="infobox"><div class="ib-head"><span>'+esc(e.cat)+'</span><strong>'+esc(e.title)+'</strong></div><dl>'+(pl?'<dt>Plan</dt><dd><a class="xref" href="#" data-act="plane" data-id="'+pl.id+'">'+esc(pl.name)+'</a></dd>':'')+e.fields.map(function(f){return '<dt>'+esc(f[0])+'</dt><dd>'+inline(f[1])+'</dd>';}).join('')+'</dl></aside>':'')
+   +'</div>'
+   +(bl.length?'<section class="refs"><h2>Mentionné dans</h2><div class="chips">'+bl.map(chip).join('')+'</div></section>':'')+'</article>';
+}
+function safeUrl(u){u=String(u||'').trim();return /^https?:\/\//i.test(u)?u:'https://'+u;}
+function vLinks(){
+  return '<header class="ph"><div><p class="eyebrow">Ressources</p><h1>Liens</h1><p class="lede">Cartes, documents, outils et pages utiles autour du monde.</p></div></header>'
+   +(S.links.length?'<div class="links">'+S.links.map(function(l){
+      return '<a class="link-card" href="'+esc(safeUrl(l.url))+'" target="_blank" rel="noopener noreferrer"><div><strong>'+esc(l.label)+'</strong>'+(l.note?'<span class="note-l">'+esc(l.note)+'</span>':'')+'<span class="url">'+esc(l.url)+'</span></div>'+ic('external',18)+'</a>';
+    }).join('')+'</div>':emptyBox('Aucun lien pour le moment.'));
+}
+
+/* ---------- Plans de l’existence ---------- */
+var PLANE_HINT='Survolez un plan pour le nommer, cliquez pour ouvrir sa page.';
+function planeList(){
+  var n=ELEMENTS.length;
+  var el=ELEMENTS.map(function(e,i){
+    return {id:e.id,name:e.name,tag:'Plan élémentaire',color:e.color,text:e.text,
+      facts:[['Borde','Le plan matériel et le plan astral'],['Voisins',ELEMENTS[(i+n-1)%n].short+' et '+ELEMENTS[(i+1)%n].short],['Opposé',ELEMENTS[(i+Math.floor(n/2))%n].short]]};
+  });
+  function by(id){return PLANES.filter(function(p){return p.id===id;})[0];}
+  return [by('upper'),by('astral')].concat(el,[by('material'),by('lower')]);
+}
+function planeById(id){return planeList().filter(function(p){return p.id===id;})[0];}
+function planeNeighbors(id){
+  var els=ELEMENTS.map(function(e){return e.id;}),n=els.length,i=els.indexOf(id);
+  if(id==='upper'||id==='lower')return ['astral'];
+  if(id==='astral')return ['upper','lower'].concat(els);
+  if(id==='material')return els;
+  return ['material','astral',els[(i+n-1)%n],els[(i+1)%n]];
+}
+function pol(r,deg){var a=deg*Math.PI/180;return [400+r*Math.cos(a),430+r*Math.sin(a)];}
+function pf(pt){return pt[0].toFixed(1)+' '+pt[1].toFixed(1);}
+function sector(r1,r2,a0,a1){
+  return 'M'+pf(pol(r2,a0))+'A'+r2+' '+r2+' 0 0 1 '+pf(pol(r2,a1))+'L'+pf(pol(r1,a1))+'A'+r1+' '+r1+' 0 0 0 '+pf(pol(r1,a0))+'Z';
+}
+function planeSvg(sel){
+  var n=ELEMENTS.length,step=360/n,o='',i;
+  function g(id,inner){
+    var p=planeById(id);
+    return '<g class="pl'+(sel===id?' sel':'')+'" style="--c:'+p.color+'" data-act="plane" data-id="'+id+'" tabindex="0" role="link" aria-label="'+esc(p.name)+'"><title>'+esc(p.name)+'</title>'+inner+'</g>';
+  }
+  var rs=7,st='';
+  function nx(){rs=(rs*9301+49297)%233280;return rs/233280;}
+  for(i=0;i<46;i++){var a=nx()*360,r=240+nx()*54,pt=pol(r,a);st+='<circle cx="'+pt[0].toFixed(1)+'" cy="'+pt[1].toFixed(1)+'" r="'+(0.8+nx()*1.2).toFixed(1)+'" opacity="'+(0.35+nx()*0.5).toFixed(2)+'"/>';}
+  o+=g('astral','<circle class="shape" cx="400" cy="430" r="300"/><g class="stars">'+st+'</g><text class="lbl up" x="400" y="165">'+esc(planeById('astral').name)+'</text>');
+  ELEMENTS.forEach(function(e,k){
+    var c=-90+k*step,lp=pol(168,c);
+    o+=g(e.id,'<path class="shape" d="'+sector(104,232,c-step/2+1.6,c+step/2-1.6)+'"/><text class="lbl" x="'+lp[0].toFixed(1)+'" y="'+lp[1].toFixed(1)+'">'+esc(e.short)+'</text>');
+  });
+  var mw=planeById('material').name.split(' ');
+  o+=g('material','<circle class="shape" cx="400" cy="430" r="88"/><text class="lbl" x="400" y="418">'+esc(mw[0])+'</text><text class="lbl" x="400" y="446">'+esc(mw.slice(1).join(' '))+'</text>');
+  o+=g('upper','<rect class="shape" x="70" y="12" width="660" height="96" rx="48"/><text class="lbl" x="400" y="60">'+esc(planeById('upper').name)+'</text>');
+  o+=g('lower','<rect class="shape" x="70" y="752" width="660" height="96" rx="48"/><text class="lbl" x="400" y="800">'+esc(planeById('lower').name)+'</text>');
+  return '<svg viewBox="0 0 800 860" role="group" aria-label="Schéma des plans de l’existence, vue de face">'+o+'</svg>';
+}
+function vCategory(){
+  var c=V.id;
+  if(c!==PLANES_CAT&&!catCount(c))return missing('wiki');
+  var head='<div class="crumbs"><button class="link" data-act="back">'+ic('back',16)+' Retour</button><button class="link" data-act="nav" data-view="wiki">Wiki</button><span aria-hidden="true">/</span><span>'+esc(c)+'</span></div>';
+  if(c===PLANES_CAT){
+    return head+'<header class="ph"><div><p class="eyebrow">Cosmologie</p><h1>'+esc(c)+'</h1><p class="lede">Les plans de l’existence, vus de face.</p></div></header>'
+      +'<section class="planes"><div class="planes-fig">'+planeSvg(null)+'</div><p class="plane-hint" id="plane-hint" aria-live="polite">'+PLANE_HINT+'</p></section>';
+  }
+  var list=S.wiki.filter(function(e){return e.cat===c;});
+  return head+'<header class="ph"><div><p class="eyebrow">Thème</p><h1>'+esc(c)+'</h1><p class="lede">'+list.length+(list.length>1?' entrées':' entrée')+' dans ce thème.</p></div></header><div class="grid">'+list.map(entryCard).join('')+'</div>';
+}
+function vPlane(){
+  var p=planeById(V.id);
+  if(!p)return missing('wiki');
+  var items=S.wiki.filter(function(e){return e.plane===p.id;}),groups={},order=[];
+  items.forEach(function(e){if(!groups[e.cat]){groups[e.cat]=[];order.push(e.cat);}groups[e.cat].push(e);});
+  order.sort(function(a,b){return a.localeCompare(b,'fr');});
+  var body=items.length?order.map(function(c){
+    return '<div class="grp-block"><h3 class="grp">'+esc(c)+'<small>'+groups[c].length+'</small></h3><div class="grid">'+groups[c].map(entryCard).join('')+'</div></div>';
+  }).join(''):'<div class="empty"><p>Aucune entrée n’est rattachée à ce plan pour le moment.</p></div>';
+  var near=planeNeighbors(p.id).map(function(id){var o=planeById(id);return '<a class="chip" href="#" data-act="plane" data-id="'+id+'"><small>'+esc(o.tag)+'</small>'+esc(o.name)+'</a>';}).join('');
+  return '<article><div class="crumbs"><button class="link" data-act="back">'+ic('back',16)+' Retour</button><button class="link" data-act="nav" data-view="wiki">Wiki</button><span aria-hidden="true">/</span><button class="link" data-act="theme" data-cat="'+esc(PLANES_CAT)+'">'+esc(PLANES_CAT)+'</button><span aria-hidden="true">/</span><span>'+esc(p.name)+'</span></div>'
+   +'<header class="ph"><div><p class="eyebrow">'+esc(p.tag)+'</p><h1>'+esc(p.name)+'</h1><p class="lede">'+inline(p.text)+'</p></div></header>'
+   +'<div class="entry-grid"><div class="plane-main"><section><h2 class="grp">Éléments de ce plan<small>'+items.length+'</small></h2>'+body+'</section>'
+   +'<section class="refs"><h2>Plans voisins</h2><div class="chips">'+near+'</div></section></div>'
+   +'<aside class="infobox"><div class="ib-head"><span>'+esc(p.tag)+'</span><strong>'+esc(p.name)+'</strong></div><div class="plane-map">'+planeSvg(p.id)+'</div><dl>'+p.facts.map(function(f){return '<dt>'+esc(f[0])+'</dt><dd>'+inline(f[1])+'</dd>';}).join('')+'</dl></aside></div></article>';
+}
+function planeHint(e){
+  var h=$('#plane-hint');if(!h)return;
+  var g=e.target.closest&&e.target.closest('.pl'),p=g?planeById(g.getAttribute('data-id')):null;
+  if(p)h.innerHTML='<strong>'+esc(p.name)+'</strong> · '+esc(p.tag);else h.textContent=PLANE_HINT;
+}
+document.addEventListener('mouseover',planeHint);
+document.addEventListener('focusin',planeHint);
+
+/* ---------- Calendrier ---------- */
+var cs={y:CAL.today.y,m:CAL.today.m-1,v:'month'};
+function calYearLen(){return CAL.months.reduce(function(a,m){return a+m.d;},0);}
+function calBefore(mi){var n=0;for(var i=0;i<mi;i++)n+=CAL.months[i].d;return n;}
+function calAbs(y,mi,d){return (y-1)*calYearLen()+calBefore(mi)+(d-1);}
+function calWeekday(a){var n=CAL.weekdays.length;return ((CAL.epochWeekday+a)%n+n)%n;}
+function calPhase(moon,a){var c=moon.cycle,ref=calAbs(moon.full.y,moon.full.m-1,moon.full.d),t=(((a-ref)%c)+c)%c;return (t/c+0.5)%1;}
+var PH=['Nouvelle lune','Premier croissant','Premier quartier','Gibbeuse croissante','Pleine lune','Gibbeuse décroissante','Dernier quartier','Dernier croissant'];
+function calPhaseName(p){return PH[Math.floor(p*8+0.5)%8];}
+function moonSvg(p,size,color){
+  var r=size/2-0.75,c=size/2,k=Math.cos(2*Math.PI*p),rx=Math.abs(k)*r,d;
+  if(p<0.5)d='M'+c+' '+(c-r)+'A'+r+' '+r+' 0 0 1 '+c+' '+(c+r)+'A'+rx+' '+r+' 0 0 '+(k>0?0:1)+' '+c+' '+(c-r)+'Z';
+  else d='M'+c+' '+(c-r)+'A'+r+' '+r+' 0 0 0 '+c+' '+(c+r)+'A'+rx+' '+r+' 0 0 '+(k>0?1:0)+' '+c+' '+(c-r)+'Z';
+  return '<svg class="moon" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" aria-hidden="true"><circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="#0a1020" stroke="#5f7298" stroke-width="1"/><path d="'+d+'" fill="'+color+'"/></svg>';
+}
+function calEvents(y,m,d){return CAL.events.filter(function(e){return e.m===m&&e.d===d&&(e.y==null||e.y===y);});}
+function calLegend(){
+  return '<div class="cal-legend">'+CAL.moons.map(function(m){return '<span class="lg">'+moonSvg(0.5,14,m.color)+esc(m.n)+', cycle de '+m.cycle+' jours</span>';}).join('')+'<span class="lg"><i class="dot"></i>Date actuelle du récit</span></div>';
+}
+function calMonthHtml(){
+  var mo=CAL.months[cs.m],n=CAL.weekdays.length,first=calWeekday(calAbs(cs.y,cs.m,1)),cells='',list=[];
+  var isCur=CAL.today.y===cs.y&&CAL.today.m-1===cs.m;
+  for(var i=0;i<first;i++)cells+='<div class="day blank"></div>';
+  for(var d=1;d<=mo.d;d++){
+    var a=calAbs(cs.y,cs.m,d);
+    var moons=CAL.moons.map(function(m){var p=calPhase(m,a);return '<span class="mn" title="'+esc(m.n+' : '+calPhaseName(p))+'">'+moonSvg(p,14,m.color)+'</span>';}).join('');
+    var evs=calEvents(cs.y,cs.m+1,d);
+    evs.forEach(function(e){list.push({d:d,title:e.title});});
+    cells+='<div class="day'+(isCur&&CAL.today.d===d?' today':'')+'"><span class="dn">'+d+'</span><span class="moons">'+moons+'</span>'+evs.map(function(e){return '<span class="ev" title="'+esc(e.title)+'">'+esc(e.title)+'</span>';}).join('')+'</div>';
+  }
+  var rest=(n-(first+mo.d)%n)%n;
+  for(var j=0;j<rest;j++)cells+='<div class="day blank"></div>';
+  return '<div class="cal-bar m"><button class="cal-nav sq" data-act="cal-month" data-step="-1" aria-label="Mois précédent">‹</button><h3>'+esc(mo.n)+' — Mois '+(cs.m+1)+'</h3><button class="cal-nav sq" data-act="cal-month" data-step="1" aria-label="Mois suivant">›</button></div>'
+   +'<div class="cal-grid" style="--cols:'+n+'">'+CAL.weekdays.map(function(w){return '<div class="wd">'+esc(w)+'</div>';}).join('')+cells+'</div>'
+   +calLegend()
+   +(list.length?'<section class="cal-events"><h4>Événements du mois</h4><ul>'+list.map(function(e){return '<li><b>'+e.d+'</b><span>'+esc(e.title)+'</span></li>';}).join('')+'</ul></section>':'');
+}
+function calYearHtml(){
+  var n=CAL.weekdays.length,head=CAL.weekdays.map(function(w){return '<span class="mh">'+esc(w.charAt(0))+'</span>';}).join('');
+  return '<div class="year-grid">'+CAL.months.map(function(mo,mi){
+    var first=calWeekday(calAbs(cs.y,mi,1)),cells='',cur=CAL.today.y===cs.y&&CAL.today.m-1===mi;
+    for(var i=0;i<first;i++)cells+='<span class="md"></span>';
+    for(var d=1;d<=mo.d;d++)cells+='<span class="md'+(cur&&CAL.today.d===d?' today':'')+'">'+d+'</span>';
+    return '<button class="mini'+(cur?' cur':'')+'" data-act="cal-open" data-m="'+mi+'" aria-label="Ouvrir '+esc(mo.n)+'"><span class="mini-t">'+esc(mo.n)+'<small>Mois '+(mi+1)+'</small></span><span class="mini-grid" style="--cols:'+n+'">'+head+cells+'</span></button>';
+  }).join('')+'</div>'+calLegend();
+}
+function vCalendar(){
+  var opts=CAL.months.map(function(m,i){return '<option value="'+i+'">'+(i+1)+'. '+esc(m.n)+'</option>';}).join('');
+  return '<header class="ph"><div><p class="eyebrow">Chronologie</p><h1>Calendrier</h1><p class="lede">Jours, mois et phases des lunes dans le monde.</p></div></header>'
+   +'<div class="cal-tools"><div class="chips" role="group" aria-label="Affichage"><button class="pill" data-act="cal-view" data-v="month">Mois</button><button class="pill" data-act="cal-view" data-v="year">Année</button></div>'
+   +'<label class="cal-field" id="cal-mw"><span>Mois</span><select id="cal-m" class="in">'+opts+'</select></label>'
+   +'<label class="cal-field"><span>Année</span><input id="cal-y" class="in" type="number" min="1" step="1"></label>'
+   +'<button class="btn" data-act="cal-today">Aller à aujourd’hui</button></div>'
+   +'<div id="cal-body"></div>';
+}
+function drawCal(){
+  var host=$('#cal-body');if(!host)return;
+  $('#cal-y').value=cs.y;$('#cal-m').value=cs.m;
+  $('#cal-mw').hidden=cs.v!=='month';
+  Array.prototype.forEach.call(document.querySelectorAll('[data-act="cal-view"]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.v===cs.v));});
+  var ae=document.activeElement,sel=null;
+  if(ae&&host.contains(ae)&&ae.dataset&&ae.dataset.act)sel='[data-act="'+ae.dataset.act+'"]'+(ae.dataset.step?'[data-step="'+ae.dataset.step+'"]':'');
+  host.innerHTML='<div class="cal-bar"><button class="cal-nav" data-act="cal-year" data-step="-1">‹ Année</button><h2>Année '+cs.y+' — '+esc(CAL.era)+'</h2><button class="cal-nav" data-act="cal-year" data-step="1">Année ›</button></div>'+(cs.v==='month'?calMonthHtml():calYearHtml());
+  if(sel){var nf=host.querySelector(sel);if(nf)nf.focus();}
+}
+
+function render(){
+  renderNav();
+  var fn={sanctum:vSanctum,chronicles:vChronicles,chronicle:vChronicle,wiki:vWiki,entry:vEntry,category:vCategory,plane:vPlane,links:vLinks,calendar:vCalendar}[V.name]||vSanctum;
+  $('#view').innerHTML=fn();
+  if(V.name==='calendar')drawCal();
+}
+
+/* ---------- Réglages ---------- */
+function applySettings(){
+  document.documentElement.style.setProperty('--accent',S.settings.accent);
+  document.documentElement.classList.toggle('still',!S.settings.anim);
+  $('#sky').hidden=!S.settings.sky;
+  $('#app').classList.toggle('collapsed',!!S.settings.collapsed);
+  refreshBrand();
+}
+/* ---------- Événements ---------- */
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-act]');if(!t)return;
+  e.preventDefault();
+  var a=t.dataset.act,id=t.dataset.id;
+  switch(a){
+    case 'nav':go(t.dataset.view);break;
+    case 'open-entry':go('entry',id);break;
+    case 'open-chron':go('chronicle',id);break;
+    case 'back':back();break;
+    case 'collapse':S.settings.collapsed=!S.settings.collapsed;save();$('#app').classList.toggle('collapsed',S.settings.collapsed);break;
+    case 'menu':$('#app').classList.add('open');break;
+    case 'menu-close':closeDrawer();break;
+    case 'scroll-next':{var r=$('#recent');if(r)r.scrollIntoView({behavior:RM?'auto':'smooth'});break;}
+    case 'theme':go('category',t.dataset.cat);break;
+    case 'plane':go('plane',t.dataset.id);break;
+    case 'cal-view':cs.v=t.dataset.v;drawCal();break;
+    case 'cal-year':cs.y=Math.max(1,cs.y+parseInt(t.dataset.step,10));drawCal();break;
+    case 'cal-month':{
+      var stp=parseInt(t.dataset.step,10),cnt=CAL.months.length,nm=cs.m+stp,ny=cs.y;
+      if(nm<0){if(ny>1){nm=cnt-1;ny--;}else nm=0;}else if(nm>=cnt){nm=0;ny++;}
+      cs.m=nm;cs.y=ny;drawCal();break;}
+    case 'cal-open':cs.m=parseInt(t.dataset.m,10);cs.v='month';drawCal();break;
+    case 'cal-today':cs.y=CAL.today.y;cs.m=CAL.today.m-1;cs.v='month';drawCal();break;
+  }
+});
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.id==='q'){q=t.value;$('#results').innerHTML=wikiResults();}
+});
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='cal-m'){cs.m=parseInt(t.value,10)||0;drawCal();}
+  else if(t.id==='cal-y'){var v=parseInt(t.value,10);if(v>=1)cs.y=v;drawCal();}
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape')closeDrawer();
+  else if((e.key==='Enter'||e.key===' ')&&e.target.getAttribute&&e.target.getAttribute('data-act')==='plane'&&e.target.tagName.toLowerCase()==='g'){
+    e.preventDefault();go('plane',e.target.getAttribute('data-id'));
+  }
+});
+
+/* ---------- Ciel étoilé ---------- */
+var sky=$('#sky'),cx=sky.getContext('2d');
+var W=0,H=0,stars=[],links=[],shooters=[],raf=0,nextShot=0,lastT=0;
+function buildSky(){
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  W=window.innerWidth;H=window.innerHeight;
+  sky.width=Math.round(W*dpr);sky.height=Math.round(H*dpr);
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  var n=Math.round(W*H/7500*S.settings.density);
+  stars=[];
+  for(var i=0;i<n;i++){
+    var big=Math.random()<0.06;
+    stars.push({x:Math.random()*W,y:Math.random()*H,r:big?1.5+Math.random()*0.8:0.35+Math.random()*0.75,a:0.3+Math.random()*0.6,ph:Math.random()*6.283,sp:0.5+Math.random()*1.5,big:big});
+  }
+  var key=[];
+  stars.forEach(function(s,i){if(s.big||s.r>0.95)key.push({s:s,i:i});});
+  var seen={};links=[];
+  key.forEach(function(a){
+    key.filter(function(b){return b.i!==a.i;}).map(function(b){return {b:b,d:Math.hypot(a.s.x-b.s.x,a.s.y-b.s.y)};})
+      .filter(function(o){return o.d<240;}).sort(function(u,v){return u.d-v.d;}).slice(0,2)
+      .forEach(function(o){var k=a.i<o.b.i?a.i+'-'+o.b.i:o.b.i+'-'+a.i;if(!seen[k]){seen[k]=1;links.push([a.s,o.b.s]);}});
+  });
+  draw(performance.now(),0);
+}
+function spawnShot(){
+  var ang=(28+Math.random()*14)*Math.PI/180,sp=650+Math.random()*350;
+  shooters.push({x:Math.random()*W*0.8,y:Math.random()*H*0.45,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,age:0,life:0.8+Math.random()*0.6,len:110+Math.random()*90});
+}
+function draw(t,dt){
+  cx.clearRect(0,0,W,H);
+  var g=cx.createRadialGradient(W*0.55,H*0.32,0,W*0.55,H*0.32,Math.max(W,H)*0.65);
+  g.addColorStop(0,'rgba(72,52,130,.17)');g.addColorStop(0.5,'rgba(24,40,90,.07)');g.addColorStop(1,'rgba(5,8,19,0)');
+  cx.globalAlpha=1;cx.fillStyle=g;cx.fillRect(0,0,W,H);
+  cx.strokeStyle='rgba(140,190,240,.08)';cx.lineWidth=1;cx.beginPath();
+  links.forEach(function(l){cx.moveTo(l[0].x,l[0].y);cx.lineTo(l[1].x,l[1].y);});
+  cx.stroke();
+  var anim=S.settings.anim;
+  for(var i=0;i<stars.length;i++){
+    var s=stars[i],tw=anim?0.62+0.38*Math.sin(t/1000*s.sp+s.ph):1;
+    cx.globalAlpha=Math.min(1,s.a*tw);
+    cx.fillStyle=s.big?'#ffffff':'#d9e6ff';
+    cx.beginPath();cx.arc(s.x,s.y,s.r,0,6.2832);cx.fill();
+  }
+  cx.globalAlpha=1;
+  for(var j=0;j<stars.length;j++){
+    var b=stars[j];if(!b.big)continue;
+    var h=cx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r*5);
+    h.addColorStop(0,'rgba(190,220,255,.26)');h.addColorStop(1,'rgba(190,220,255,0)');
+    cx.fillStyle=h;cx.fillRect(b.x-b.r*5,b.y-b.r*5,b.r*10,b.r*10);
+  }
+  for(var k=shooters.length-1;k>=0;k--){
+    var o=shooters[k];o.age+=dt;
+    if(o.age>o.life){shooters.splice(k,1);continue;}
+    var hx=o.x+o.vx*o.age,hy=o.y+o.vy*o.age,sp=Math.hypot(o.vx,o.vy),tx=hx-o.vx/sp*o.len,ty=hy-o.vy/sp*o.len;
+    var lg=cx.createLinearGradient(tx,ty,hx,hy);
+    lg.addColorStop(0,'rgba(255,255,255,0)');lg.addColorStop(1,'rgba(255,255,255,1)');
+    cx.globalAlpha=Math.sin(Math.PI*o.age/o.life);
+    cx.strokeStyle=lg;cx.lineWidth=1.5;cx.beginPath();cx.moveTo(tx,ty);cx.lineTo(hx,hy);cx.stroke();
+  }
+  cx.globalAlpha=1;
+}
+function loop(t){
+  var dt=Math.min(0.05,(t-lastT)/1000||0);lastT=t;
+  if(t>nextShot){spawnShot();nextShot=t+3500+Math.random()*5500;}
+  draw(t,dt);
+  raf=requestAnimationFrame(loop);
+}
+function startSky(){
+  cancelAnimationFrame(raf);raf=0;shooters=[];
+  if(!S.settings.sky)return;
+  if(S.settings.anim&&!document.hidden){lastT=performance.now();nextShot=lastT+1500;raf=requestAnimationFrame(loop);}
+  else draw(performance.now(),0);
+}
+document.addEventListener('visibilitychange',startSky);
+var rt=0;
+window.addEventListener('resize',function(){
+  clearTimeout(rt);
+  rt=setTimeout(function(){
+    if(Math.abs(window.innerWidth-W)>40||window.innerHeight-H>150){buildSky();startSky();}
+  },200);
+});
+
+applySettings();
+render();
+buildSky();
+startSky();
+})();
+</script>
+
+</html>
